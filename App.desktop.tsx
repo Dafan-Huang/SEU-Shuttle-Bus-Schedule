@@ -5,6 +5,7 @@ import type { ScheduleType, Route, UpcomingDeparture, DepartureInfo, LoopingInfo
 import { BusIcon, ClockIcon, CalendarIcon, SunIcon, MoonIcon, RouteIcon, ResetIcon, SettingsIcon } from './components/Icons';
 import { HolidayManagerComponent } from './components/HolidayManager';
 import { AppCredit } from './components/AppCredit';
+import { TransitHeader } from './components/TransitHeader';
 import { holidayManager } from './utils/holidayManager';
 import { formatLocalDate, parseLocalDate } from './utils/dateUtils';
 
@@ -150,24 +151,24 @@ const findUpcomingDepartures = (
 };
 
 const DepartureCard: React.FC<{ route: Route; departures: UpcomingDeparture[]; isQueryToday: boolean }> = ({ route, departures, isQueryToday }) => (
-  <div className="bg-slate-800 rounded-xl shadow-lg p-6 w-full">
-    <div className="flex items-center mb-4">
+  <div className="transit-route p-6 w-full">
+    <div className="transit-route-heading flex items-center mb-4">
       <BusIcon className="w-6 h-6 text-cyan-400 mr-3" />
       <h3 className="text-xl font-bold text-slate-100">{route.name}</h3>
     </div>
     <div className="space-y-4">
       {departures.length > 0 ? (
         departures.map((departure, index) => (
-          <div key={index} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
-            <div className="flex-grow">
-              <p className="text-2xl font-mono font-bold text-white">{departure.time}</p>
+          <div key={index} className="transit-departure flex justify-between items-center p-4 rounded-lg">
+            <div className="min-w-0 flex-grow">
+              <p className="text-2xl transit-time font-mono font-bold">{departure.time}</p>
               <div className="flex items-center gap-2 mt-2 text-slate-400">
                 <RouteIcon className="w-4 h-4 flex-shrink-0" />
                 <p className="text-xs">{departure.routeDetail}</p>
               </div>
               {departure.isTomorrow && <p className="text-xs text-amber-400 mt-1">明天</p>}
             </div>
-            <div className="text-right flex-shrink-0 ml-4">
+            <div className="transit-countdown text-right flex-shrink-0 ml-4">
               {departure.isLooping ? (
                  <p className="text-lg font-semibold text-cyan-300">循环中</p>
               ) : (
@@ -202,7 +203,7 @@ const FullScheduleView: React.FC<{ routes: Route[] }> = ({ routes }) => {
                 }, {} as Record<string, string[]>);
 
                 return (
-                    <div key={index} className="bg-slate-800/50 rounded-lg p-4">
+                    <div key={index} className="transit-schedule p-4">
                         <h4 className="text-lg font-semibold text-cyan-400 mb-3 border-b border-slate-700 pb-2">{route.name}</h4>
                         
                         {/* Display looping services */}
@@ -215,7 +216,7 @@ const FullScheduleView: React.FC<{ routes: Route[] }> = ({ routes }) => {
                                             <span>{loop.routeDetail}</span>
                                         </p>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                          <div className="bg-slate-700 text-center rounded-md py-1 px-2 col-span-2">
+                                          <div className="transit-time-slot text-center py-1 px-2 col-span-2">
                                               <span className="font-mono text-sm text-white">{loop.startTime} - {loop.endTime}</span>
                                           </div>
                                         </div>
@@ -234,7 +235,7 @@ const FullScheduleView: React.FC<{ routes: Route[] }> = ({ routes }) => {
                                     </p>
                                     <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                                         {times.map((time, timeIndex) => (
-                                            <div key={timeIndex} className="bg-slate-700 text-center rounded-md py-1 px-2">
+                                            <div key={timeIndex} className="transit-time-slot text-center py-1 px-2">
                                                 <span className="font-mono text-sm text-white">{time}</span>
                                             </div>
                                         ))}
@@ -362,19 +363,14 @@ const App: React.FC = () => {
   const isQueryToday = queryDate.toDateString() === currentTime.toDateString();
 
   return (
-    <div className="min-h-screen bg-slate-900 font-sans p-4 sm:p-6 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-            接驳车实时查询
-          </h1>
-          <p className="text-slate-400 mt-2">轻松查询下一班车</p>
-        </header>
+    <div className="transit-shell min-h-screen font-sans">
+      <div className="transit-container mx-auto">
+        <TransitHeader />
 
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-2xl border border-slate-700">
+        <div className="transit-panel p-6 mb-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
                 <div className="flex items-center gap-4">
-                    <ClockIcon className="w-8 h-8 text-slate-400"/>
+                    <ClockIcon className="w-8 h-8 transit-clock"/>
                     <div>
                         <p className="text-3xl font-mono font-bold">{formattedTime}</p>
                         <p className="text-sm text-slate-400">{formattedDate}</p>
@@ -388,7 +384,8 @@ const App: React.FC = () => {
                               const currentScheduleType = holidayManager.getScheduleType(new Date());
                               setScheduleType(currentScheduleType);
                             }}
-                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 flex items-center gap-2 ${isSmartMode ? 'bg-green-500 text-white' : 'text-slate-300 hover:bg-slate-600'}`}
+                            aria-pressed={isSmartMode}
+                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 flex items-center gap-2 ${isSmartMode ? 'transit-selected' : 'text-slate-300 hover:bg-slate-600'}`}
                         >
                             <SettingsIcon className="w-4 h-4"/>
                             智能
@@ -398,7 +395,8 @@ const App: React.FC = () => {
                               setIsSmartMode(false);
                               setScheduleType('weekday');
                             }}
-                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 flex items-center gap-2 ${!isSmartMode && scheduleType === 'weekday' ? 'bg-blue-500 text-white' : 'text-slate-300 hover:bg-slate-600'}`}
+                            aria-pressed={!isSmartMode && scheduleType === 'weekday'}
+                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 flex items-center gap-2 ${!isSmartMode && scheduleType === 'weekday' ? 'transit-selected' : 'text-slate-300 hover:bg-slate-600'}`}
                         >
                             <MoonIcon className="w-4 h-4"/>
                             工作日
@@ -408,7 +406,8 @@ const App: React.FC = () => {
                               setIsSmartMode(false);
                               setScheduleType('holiday');
                             }}
-                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 flex items-center gap-2 ${!isSmartMode && scheduleType === 'holiday' ? 'bg-cyan-500 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
+                            aria-pressed={!isSmartMode && scheduleType === 'holiday'}
+                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 flex items-center gap-2 ${!isSmartMode && scheduleType === 'holiday' ? 'transit-selected' : 'text-slate-300 hover:bg-slate-700'}`}
                         >
                             <SunIcon className="w-4 h-4"/>
                             节假日
@@ -435,7 +434,7 @@ const App: React.FC = () => {
                     id="queryDate"
                     value={formatLocalDate(queryDate)}
                     onChange={handleDateChange}
-                    className="bg-slate-700 border border-slate-600 rounded-md px-2 py-1 text-white font-mono text-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+                    className="bg-slate-700 border border-slate-600 rounded-md px-2 py-1 text-white transit-field font-mono text-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none"
                     aria-label="查询日期"
                 />
                 <input
@@ -443,7 +442,7 @@ const App: React.FC = () => {
                     id="queryTime"
                     value={queryTimeValue}
                     onChange={handleTimeChange}
-                    className="bg-slate-700 border border-slate-600 rounded-md px-2 py-1 text-white font-mono text-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+                    className="bg-slate-700 border border-slate-600 rounded-md px-2 py-1 text-white transit-field font-mono text-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none"
                     aria-label="查询时间"
                 />
                 <button
@@ -459,27 +458,30 @@ const App: React.FC = () => {
         </div>
 
         <main className="space-y-8">
-            <div className="text-center mb-6">
+            <div className="transit-section-heading">
                 {!isQueryToday && (
                     <p className="text-lg text-amber-400 mb-2">
                         查询日期：{queryFormattedDate}
                     </p>
                 )}
-                <h2 className="text-2xl font-bold text-slate-300 flex items-center justify-center gap-3">
+                <h2 className="text-2xl font-bold text-slate-300 flex flex-wrap items-center gap-3">
                     <CalendarIcon className="w-6 h-6"/>
-                    <span className="capitalize text-cyan-400">{scheduleType === 'weekday' ? '工作日' : '节假日'}</span> - 
+                    <span className="transit-badge">{scheduleType === 'weekday' ? '工作日' : '节假日'}</span>
                     {isQueryToday ? '即将发车' : '班次信息'}
                 </h2>
             </div>
-          {upcomingDepartures.map((route, index) => (
-            <DepartureCard key={index} route={route} departures={route.upcoming} isQueryToday={isQueryToday} />
-          ))}
+          <div className="transit-routes">
+            {upcomingDepartures.map((route, index) => (
+              <DepartureCard key={index} route={route} departures={route.upcoming} isQueryToday={isQueryToday} />
+            ))}
+          </div>
         </main>
 
         <footer className="text-center mt-12">
             <button
                 onClick={() => setShowFullSchedule(!showFullSchedule)}
-                className="bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold py-2 px-6 rounded-lg transition-all"
+                aria-expanded={showFullSchedule}
+                className="transit-schedule-toggle font-semibold py-2 px-6 rounded-lg transition-all"
             >
                 {showFullSchedule ? '隐藏' : '显示'}完整时刻表
             </button>
