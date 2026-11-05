@@ -52,7 +52,7 @@ jobs:
           if-no-files-found: error
 
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -76,7 +76,12 @@ jobs:
       - name: Build and verify Android test APK
         shell: bash
         run: |
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          test -d "$ANDROID_HOME"
+          if [ ! -x "$ANDROID_HOME/build-tools/35.0.0/apksigner" ] || [ ! -f "$ANDROID_HOME/platforms/android-35/android.jar" ]; then
+            sdk_manager=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f -print -quit)
+            test -n "$sdk_manager"
+            "$sdk_manager" 'platforms;android-35' 'build-tools;35.0.0'
+          fi
           gradle -p android :app:assembleDebug --no-daemon
           apk=android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$apk"
