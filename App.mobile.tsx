@@ -1,153 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { memo, useState } from 'react';
 import { SCHEDULE_DATA } from './constants';
-import type { ScheduleType, Route, UpcomingDeparture, DepartureInfo, LoopingInfo } from './types';
-import { BusIcon, ClockIcon, CalendarIcon, SunIcon, MoonIcon, RouteIcon, ResetIcon, SettingsIcon } from './components/Icons';
+import type { ScheduleType, Route, UpcomingDeparture } from './types';
+import { BusIcon, CalendarIcon, SunIcon, MoonIcon, RouteIcon, ResetIcon, SettingsIcon } from './components/Icons';
 import { HolidayManagerComponent } from './components/HolidayManager';
 import { AppCredit } from './components/AppCredit';
 import { TransitHeader } from './components/TransitHeader';
-import { holidayManager } from './utils/holidayManager';
-import { formatLocalDate, parseLocalDate } from './utils/dateUtils';
-
-// Helper function to find active looping services
-const findActiveLoopingServices = (loopingServices: LoopingInfo[] | undefined, queryTime: Date): UpcomingDeparture[] => {
-    if (!loopingServices) return [];
-
-    const queryTotalMinutes = queryTime.getHours() * 60 + queryTime.getMinutes();
-    const activeLoops: UpcomingDeparture[] = [];
-
-    for (const loop of loopingServices) {
-        const [startHour, startMinute] = loop.startTime.split(':').map(Number);
-        const loopStartMinutes = startHour * 60 + startMinute;
-
-        const [endHour, endMinute] = loop.endTime.split(':').map(Number);
-        const loopEndMinutes = endHour * 60 + endMinute;
-
-        // 如果查询时间在循环时间内，显示"--"
-        if (queryTotalMinutes >= loopStartMinutes && queryTotalMinutes <= loopEndMinutes) {
-            activeLoops.push({
-                time: '--',
-                minutesUntil: 0,
-                isTomorrow: false,
-                routeDetail: loop.routeDetail,
-                isLooping: true,
-            });
-        }
-        // 如果查询时间在循环开始前，显示循环开始时间和正常倒计时
-        else if (queryTotalMinutes < loopStartMinutes) {
-            activeLoops.push({
-                time: loop.startTime,
-                minutesUntil: loopStartMinutes - queryTotalMinutes,
-                isTomorrow: false,
-                routeDetail: loop.routeDetail,
-                isLooping: false, // 开始前不是循环状态，应显示正常倒计时
-            });
-        }
-    }
-    return activeLoops;
-}
-
-// Helper function updated to handle the new data structure and tomorrow's schedule
-const findUpcomingDepartures = (
-  departures: DepartureInfo[], 
-  queryTime: Date, 
-  queryDate: Date,
-  currentTime: Date, 
-  count: number, 
-  getTomorrowSchedule: () => DepartureInfo[],
-  getTomorrowLoopingServices?: () => LoopingInfo[]
-): UpcomingDeparture[] => {
-  if (count <= 0) return [];
-  const queryTotalMinutes = queryTime.getHours() * 60 + queryTime.getMinutes();
-  const upcoming: UpcomingDeparture[] = [];
-
-  // 检查查询日期是否是今天
-  const isToday = queryDate.toDateString() === currentTime.toDateString();
-  
-  // Find departures for the query date
-  for (const departure of departures) {
-    const [hour, minute] = departure.time.split(':').map(Number);
-    const departureTotalMinutes = hour * 60 + minute;
-    
-    if (departureTotalMinutes > queryTotalMinutes) {
-      let minutesUntil: number;
-      
-      if (isToday) {
-        // 如果是今天，使用查询时间计算剩余时间
-        minutesUntil = departureTotalMinutes - queryTotalMinutes;
-      } else {
-        // 如果不是今天，显示相对于查询时间的分钟数
-        minutesUntil = departureTotalMinutes - queryTotalMinutes;
-      }
-      
-      upcoming.push({
-        ...departure,
-        minutesUntil: Math.max(0, minutesUntil),
-        isTomorrow: false
-      });
-    }
-    if (upcoming.length === count) {
-      return upcoming;
-    }
-  }
-
-  // If not enough found for the query date, add from "next day"
-  const remainingCount = count - upcoming.length;
-  if (remainingCount > 0) {
-    // 首先检查第二天的循环发车服务
-    if (getTomorrowLoopingServices) {
-      const tomorrowLoops = getTomorrowLoopingServices();
-      for (const loop of tomorrowLoops) {
-        if (upcoming.length >= count) break;
-        
-        const [startHour, startMinute] = loop.startTime.split(':').map(Number);
-        const loopStartMinutes = startHour * 60 + startMinute;
-        
-        let minutesUntil: number;
-        if (isToday) {
-          // 如果查询日期是今天，使用查询时间计算到明天循环开始的分钟数
-          minutesUntil = (24 * 60 - queryTotalMinutes) + loopStartMinutes;
-        } else {
-          // 如果查询日期不是今天，显示相对时间
-          minutesUntil = (24 * 60 - queryTotalMinutes) + loopStartMinutes;
-        }
-        
-        upcoming.push({
-          time: loop.startTime,
-          minutesUntil: minutesUntil,
-          isTomorrow: true,
-          routeDetail: loop.routeDetail,
-          isLooping: false, // 明天的循环开始时间，不是当前循环状态
-        });
-      }
-    }
-    
-    // 然后添加第二天的定时班次
-    const finalRemainingCount = count - upcoming.length;
-    if (finalRemainingCount > 0) {
-      const tomorrowDepartures = getTomorrowSchedule().slice(0, finalRemainingCount);
-      for (const departure of tomorrowDepartures) {
-        const [hour, minute] = departure.time.split(':').map(Number);
-        const departureTotalMinutes = hour * 60 + minute;
-        
-        let minutesUntil: number;
-        if (isToday) {
-          // 如果查询日期是今天，使用查询时间计算到明天该时间的分钟数
-          minutesUntil = (24 * 60 - queryTotalMinutes) + departureTotalMinutes;
-        } else {
-          // 如果查询日期不是今天，显示相对时间
-          minutesUntil = (24 * 60 - queryTotalMinutes) + departureTotalMinutes;
-        }
-        
-        upcoming.push({
-          ...departure,
-          minutesUntil: minutesUntil,
-          isTomorrow: true
-        });
-      }
-    }
-  }
-  return upcoming;
-};
+import { LiveClock } from './components/LiveClock';
+import { useScheduleQuery } from './utils/useScheduleQuery';
+import type { ScheduleMode } from './utils/useScheduleQuery';
 
 const DepartureCard: React.FC<{ route: Route; departures: UpcomingDeparture[]; isQueryToday: boolean }> = ({ route, departures, isQueryToday }) => (
   <div className="transit-route p-4 w-full">
@@ -188,7 +48,7 @@ const DepartureCard: React.FC<{ route: Route; departures: UpcomingDeparture[]; i
   </div>
 );
 
-const FullScheduleView: React.FC<{ routes: Route[] }> = ({ routes }) => {
+const FullScheduleView: React.FC<{ routes: Route[] }> = memo(({ routes }) => {
     return (
         <div className="mt-4 space-y-4">
             {routes.map((route, index) => {
@@ -247,39 +107,36 @@ const FullScheduleView: React.FC<{ routes: Route[] }> = ({ routes }) => {
             })}
         </div>
     );
-};
+});
 
 // 控制面板组件
 const ControlPanel: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  queryTime: Date;
-  queryDate: Date;
+  queryTimeValue: string;
+  queryDateValue: string;
   scheduleType: ScheduleType;
   isSmartMode: boolean;
-  onTimeChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onDateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onScheduleTypeChange: (type: ScheduleType) => void;
-  onSmartModeChange: (enabled: boolean) => void;
+  onTimeChange: (value: string) => void;
+  onDateChange: (value: string) => void;
+  onScheduleModeChange: (mode: ScheduleMode) => void;
   onShowHolidayManager: () => void;
   onConfirm: () => void;
 }> = ({
   isOpen,
   onClose,
-  queryTime,
-  queryDate,
+  queryTimeValue,
+  queryDateValue,
   scheduleType,
   isSmartMode,
   onTimeChange,
   onDateChange,
-  onScheduleTypeChange,
-  onSmartModeChange,
+  onScheduleModeChange,
   onShowHolidayManager,
   onConfirm
 }) => {
   if (!isOpen) return null;
 
-  const queryTimeValue = `${queryTime.getHours().toString().padStart(2, '0')}:${queryTime.getMinutes().toString().padStart(2, '0')}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-end p-4">
@@ -300,7 +157,7 @@ const ControlPanel: React.FC<{
             <label className="text-sm font-medium text-slate-300 block mb-2">时刻表模式</label>
             <div className="flex items-center bg-slate-900 rounded-lg p-1">
               <button
-                onClick={() => onSmartModeChange(true)}
+                onClick={() => onScheduleModeChange('smart')}
                 aria-pressed={isSmartMode}
                 className={`px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-300 flex items-center gap-1 flex-1 justify-center ${isSmartMode ? 'transit-selected' : 'text-slate-300 hover:bg-slate-600'}`}
               >
@@ -308,10 +165,7 @@ const ControlPanel: React.FC<{
                 智能
               </button>
               <button
-                onClick={() => {
-                  onSmartModeChange(false);
-                  onScheduleTypeChange('weekday');
-                }}
+                onClick={() => onScheduleModeChange('weekday')}
                 aria-pressed={!isSmartMode && scheduleType === 'weekday'}
                 className={`px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-300 flex items-center gap-1 flex-1 justify-center ${!isSmartMode && scheduleType === 'weekday' ? 'transit-selected' : 'text-slate-300 hover:bg-slate-600'}`}
               >
@@ -319,10 +173,7 @@ const ControlPanel: React.FC<{
                 工作日
               </button>
               <button
-                onClick={() => {
-                  onSmartModeChange(false);
-                  onScheduleTypeChange('holiday');
-                }}
+                onClick={() => onScheduleModeChange('holiday')}
                 aria-pressed={!isSmartMode && scheduleType === 'holiday'}
                 className={`px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-300 flex items-center gap-1 flex-1 justify-center ${!isSmartMode && scheduleType === 'holiday' ? 'transit-selected' : 'text-slate-300 hover:bg-slate-700'}`}
               >
@@ -338,14 +189,16 @@ const ControlPanel: React.FC<{
             <div className="space-y-2">
               <input
                 type="date"
-                value={formatLocalDate(queryDate)}
-                onChange={onDateChange}
+                value={queryDateValue}
+                aria-label="查询日期"
+                onChange={event => onDateChange(event.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white transit-field font-mono text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
               />
               <input
                 type="time"
                 value={queryTimeValue}
-                onChange={onTimeChange}
+                aria-label="查询时间"
+                onChange={event => onTimeChange(event.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white transit-field font-mono text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
               />
             </div>
@@ -376,116 +229,14 @@ const ControlPanel: React.FC<{
 };
 
 const App: React.FC = () => {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [queryTime, setQueryTime] = useState(new Date());
-  const [queryDate, setQueryDate] = useState(new Date());
-  const [useRealTime, setUseRealTime] = useState(true);
-  const [useCurrentDate, setUseCurrentDate] = useState(true);
-  const [scheduleType, setScheduleType] = useState<ScheduleType>('weekday');
+  const {
+    scheduleType, isSmartMode, setScheduleMode, queryDateValue, queryTimeValue,
+    queryFormattedDate, queryTimeFormatted, isQueryToday, isQueryNow, upcomingDepartures,
+    handleTimeChange, handleDateChange, handleResetToRealTime, handleHolidayConfigChange
+  } = useScheduleQuery();
   const [showFullSchedule, setShowFullSchedule] = useState(false);
   const [showHolidayManager, setShowHolidayManager] = useState(false);
   const [showControlPanel, setShowControlPanel] = useState(false);
-  const [holidayConfigVersion, setHolidayConfigVersion] = useState(0);
-  const [isSmartMode, setIsSmartMode] = useState(true);
-
-  // 智能节假日判断
-  useEffect(() => {
-    if (isSmartMode) {
-      const currentScheduleType = holidayManager.getScheduleType(queryDate);
-      setScheduleType(currentScheduleType);
-    }
-  }, [holidayConfigVersion, isSmartMode, queryDate]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  
-  useEffect(() => {
-    if (useRealTime) {
-      setQueryTime(currentTime);
-    }
-  }, [currentTime, useRealTime]);
-
-  useEffect(() => {
-    if (useCurrentDate) {
-      setQueryDate(currentTime);
-    }
-  }, [currentTime, useCurrentDate]);
-
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const [hours, minutes] = e.target.value.split(':').map(Number);
-    const newQueryTime = new Date(queryDate);
-    newQueryTime.setHours(hours, minutes, 0, 0);
-    setQueryTime(newQueryTime);
-    setUseRealTime(false);
-  };
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedDate = parseLocalDate(e.target.value);
-    if (!selectedDate) return;
-    const newQueryDate = new Date(selectedDate);
-    newQueryDate.setHours(queryTime.getHours(), queryTime.getMinutes(), 0, 0);
-    
-    setQueryDate(selectedDate);
-    setQueryTime(newQueryDate);
-    setUseCurrentDate(false);
-    setUseRealTime(false);
-  };
-
-  const handleResetToRealTime = () => {
-    setUseRealTime(true);
-    setUseCurrentDate(true);
-  };
-
-  const handleControlPanelConfirm = () => {
-    setShowControlPanel(false);
-  };
-
-  const upcomingDepartures = useMemo(() => {
-    const activeSchedule = SCHEDULE_DATA[scheduleType];
-    
-    const tomorrow = new Date(queryDate);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowScheduleType = holidayManager.getScheduleType(tomorrow);
-    const tomorrowSchedule = SCHEDULE_DATA[tomorrowScheduleType];
-    
-    return activeSchedule.map((route, routeIndex) => {
-        const activeLoops = findActiveLoopingServices(route.loopingServices, queryTime);
-        
-        const getTomorrowSchedule = () => {
-          return tomorrowSchedule[routeIndex]?.departures || [];
-        };
-        
-        const getTomorrowLoopingServices = () => {
-          return tomorrowSchedule[routeIndex]?.loopingServices || [];
-        };
-        
-        const timedDepartures = findUpcomingDepartures(
-          route.departures, 
-          queryTime, 
-          queryDate,
-          currentTime, 
-          2 - activeLoops.length, 
-          getTomorrowSchedule,
-          getTomorrowLoopingServices
-        );
-        const combined = [...activeLoops, ...timedDepartures];
-
-        return {
-          ...route,
-          upcoming: combined
-        };
-    });
-  }, [scheduleType, queryTime, queryDate, currentTime]);
-
-  const formattedTime = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const formattedDate = currentTime.toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  
-  const queryFormattedDate = queryDate.toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const queryTimeFormatted = queryTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const isQueryToday = queryDate.toDateString() === currentTime.toDateString();
-  const isQueryNow = useRealTime && useCurrentDate;
 
   return (
     <div className="transit-shell transit-mobile min-h-screen font-sans">
@@ -503,13 +254,7 @@ const App: React.FC = () => {
 
         {/* 日期时间窗口 */}
         <div className="transit-panel p-4 mb-4">
-          <div className="flex items-center justify-center gap-3">
-            <ClockIcon className="w-6 h-6 transit-clock"/>
-            <div className="text-center">
-              <p className="text-2xl font-mono font-bold text-white">{formattedTime}</p>
-              <p className="text-sm text-slate-400">{formattedDate}</p>
-            </div>
-          </div>
+          <LiveClock mobile />
         </div>
 
         {/* 查询信息显示 */}
@@ -562,23 +307,22 @@ const App: React.FC = () => {
       <ControlPanel
         isOpen={showControlPanel}
         onClose={() => setShowControlPanel(false)}
-        queryTime={queryTime}
-        queryDate={queryDate}
+        queryTimeValue={queryTimeValue}
+        queryDateValue={queryDateValue}
         scheduleType={scheduleType}
         isSmartMode={isSmartMode}
         onTimeChange={handleTimeChange}
         onDateChange={handleDateChange}
-        onScheduleTypeChange={setScheduleType}
-        onSmartModeChange={setIsSmartMode}
+        onScheduleModeChange={setScheduleMode}
         onShowHolidayManager={() => setShowHolidayManager(true)}
-        onConfirm={handleControlPanelConfirm}
+        onConfirm={() => setShowControlPanel(false)}
       />
       
       {/* 节假日管理器 */}
       {showHolidayManager && (
         <HolidayManagerComponent
           onClose={() => setShowHolidayManager(false)}
-          onConfigChange={() => setHolidayConfigVersion(prev => prev + 1)}
+          onConfigChange={handleHolidayConfigChange}
         />
       )}
     </div>

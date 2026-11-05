@@ -46,6 +46,7 @@
     "clean": "rimraf dist release src-tauri/target android/app/build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc --noEmit",
+    "test": "node --experimental-strip-types scripts/test-upcoming.mjs",
     "validate-data": "node --experimental-strip-types scripts/validate-data.mjs",
     "generate-pwa-icons": "node scripts/generate-pwa-icons.mjs",
     "validate-pwa": "node scripts/validate-pwa.mjs"
