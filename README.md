@@ -95,3 +95,7 @@ npm run build-android
 - [部署指南](./部署指南.md) - 生产环境部署
 - [版本说明](./release/版本说明.md) - 发布版本信息
 
+## 致敬
+
+感谢缘天天开发并分享原版接驳车查询工具。这个版本在原项目的基础上调整了界面，并加入了自定义配色。 [原项目](https://github.com/xzh-xzh/shuttle-bus-schedule)
+
