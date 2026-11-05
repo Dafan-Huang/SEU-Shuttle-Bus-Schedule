@@ -1,0 +1,127 @@
+name: Package and publish v2.1.1
+
+on:
+  push:
+    branches: [codex-release-v2.1.1]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seu-shuttle-v2.1.1-release
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: d1803dd51d15baa83f4b5f489a3d3a74d8277228
+  RELEASE_TAG: v2.1.1
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: d1803dd51d15baa83f4b5f489a3d3a74d8277228
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: rustup toolchain install stable --profile minimal
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run validate-data
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          Set-Content -LiteralPath release-tauri-config.json -Value '{"version":"2.1.1"}' -Encoding utf8NoBOM
+          npm run build-tauri -- --bundles nsis --config release-tauri-config.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run validate-pwa
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installers = @(Get-ChildItem -LiteralPath 'src-tauri/target/release/bundle/nsis' -Filter '*-setup.exe' -File)
+          if ($installers.Count -ne 1 -or $installers[0].Length -lt 1MB) { throw 'Expected a single valid Windows installer' }
+          New-Item -ItemType Directory -Path release-assets | Out-Null
+          Copy-Item -LiteralPath $installers[0].FullName -Destination 'release-assets/SEU-Shuttle-Bus-Schedule-v2.1.1-windows-x64-setup.exe'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release-assets/*.exe
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: d1803dd51d15baa83f4b5f489a3d3a74d8277228
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - run: npm ci
+      - run: npm run build
+      - run: npx --no-install cap sync android
+      - name: Build and verify Android test APK
+        shell: bash
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          gradle -p android :app:assembleDebug --no-daemon
+          apk=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          unzip -tq "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep -F "versionName='2.1.1'"
+          unzip -Z -1 "$apk" | grep -E '^assets/public/assets/TransitHeader-[^/]+\.js$'
+          mkdir -p release-assets
+          cp "$apk" release-assets/SEU-Shuttle-Bus-Schedule-v2.1.1-android-test.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: release-assets/*.apk
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish verified assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          cd release-assets
+          windows=SEU-Shuttle-Bus-Schedule-v2.1.1-windows-x64-setup.exe
+          android=SEU-Shuttle-Bus-Schedule-v2.1.1-android-test.apk
+          sha256sum "$windows" "$android" > SHA256SUMS.txt
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          本版加入可调亮度的自定义色盘、深浅模式，以及分别适配电脑和手机的班次界面。
+
+          - Windows x64：Tauri 安装程序，未进行代码签名。
+          - Android：可安装的测试 APK，使用调试签名。若旧版签名不同，Android 会拒绝覆盖安装。
+          - SHA256SUMS.txt：两份安装包的 SHA-256 校验值。
+
+          感谢缘天天分享[原版项目](https://github.com/xzh-xzh/shuttle-bus-schedule)。
+          EOF
+          gh release create "$RELEASE_TAG" "$windows" "$android" SHA256SUMS.txt \
+            --target "$SOURCE_SHA" --title "东南大学接驳车时刻表 v2.1.1" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
