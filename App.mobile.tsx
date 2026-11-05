@@ -6,6 +6,7 @@ import { HolidayManagerComponent } from './components/HolidayManager';
 import { AppCredit } from './components/AppCredit';
 import { TransitHeader } from './components/TransitHeader';
 import { LiveClock } from './components/LiveClock';
+import { TransitPalette } from './components/TransitPalette';
 import { useScheduleQuery } from './utils/useScheduleQuery';
 import type { ScheduleMode } from './utils/useScheduleQuery';
 
@@ -135,17 +136,17 @@ const ControlPanel: React.FC<{
   onShowHolidayManager,
   onConfirm
 }) => {
-  if (!isOpen) return null;
-
-
   return (
+    <div hidden={!isOpen}>
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-end p-4">
-      <div className="transit-panel w-full max-w-sm mt-16 mr-2 self-start max-h-[calc(100%-4rem)] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-labelledby="mobile-settings-title"
+        className="transit-panel w-full max-w-sm mt-16 mr-2 self-start max-h-[calc(100%-4rem)] overflow-y-auto">
         <div className="p-4">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-slate-100">控制面板</h3>
+            <h3 id="mobile-settings-title" className="text-lg font-bold text-slate-100">控制面板</h3>
             <button
               onClick={onClose}
+              aria-label="关闭控制面板"
               className="text-slate-400 hover:text-white transition-colors"
             >
               ✕
@@ -215,6 +216,10 @@ const ControlPanel: React.FC<{
             </button>
           </div>
 
+          <div className="mb-4">
+            <TransitPalette />
+          </div>
+
           {/* 确定按钮 */}
           <button
             onClick={onConfirm}
@@ -224,6 +229,7 @@ const ControlPanel: React.FC<{
           </button>
         </div>
       </div>
+    </div>
     </div>
   );
 };

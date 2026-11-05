@@ -1,5 +1,5 @@
 
-import React, { memo, useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import { SCHEDULE_DATA } from './constants';
 import type { Route, UpcomingDeparture } from './types';
 import { BusIcon, CalendarIcon, SunIcon, MoonIcon, RouteIcon, ResetIcon, SettingsIcon } from './components/Icons';
@@ -7,6 +7,7 @@ import { HolidayManagerComponent } from './components/HolidayManager';
 import { AppCredit } from './components/AppCredit';
 import { TransitHeader } from './components/TransitHeader';
 import { LiveClock } from './components/LiveClock';
+import { AppearanceSettings } from './components/AppearanceSettings';
 import { useScheduleQuery } from './utils/useScheduleQuery';
 
 const DepartureCard: React.FC<{ route: Route; departures: UpcomingDeparture[]; isQueryToday: boolean }> = ({ route, departures, isQueryToday }) => (
@@ -118,11 +119,21 @@ const App: React.FC = () => {
   } = useScheduleQuery();
   const [showFullSchedule, setShowFullSchedule] = useState(false);
   const [showHolidayManager, setShowHolidayManager] = useState(false);
+  const [showAppearanceSettings, setShowAppearanceSettings] = useState(false);
+  const closeAppearanceSettings = useCallback(() => setShowAppearanceSettings(false), []);
 
   return (
     <div className="transit-shell min-h-screen font-sans">
       <div className="transit-container mx-auto">
-        <TransitHeader />
+        <TransitHeader>
+          <button
+            onClick={() => setShowAppearanceSettings(true)}
+            className="transit-settings"
+            aria-label="打开外观设置"
+          >
+            <SettingsIcon className="w-5 h-5" />
+          </button>
+        </TransitHeader>
 
         <div className="transit-panel p-6 mb-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
@@ -233,6 +244,7 @@ const App: React.FC = () => {
       </div>
       
       {/* 节假日管理器 */}
+      <AppearanceSettings isOpen={showAppearanceSettings} onClose={closeAppearanceSettings} />
       {showHolidayManager && (
         <HolidayManagerComponent
           onClose={() => setShowHolidayManager(false)}
