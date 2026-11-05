@@ -42,8 +42,8 @@ export function TransitPalette() {
   }, [appearance, color, brightness, light]);
 
   return (
-    <details className="transit-palette">
-      <summary><span className="transit-palette-dot" aria-hidden="true" />配色</summary>
+    <section className="transit-palette" aria-labelledby="palette-title">
+      <h3 id="palette-title" className="transit-palette-title"><span className="transit-palette-dot" aria-hidden="true" />外观配色</h3>
       <div className="transit-palette-controls">
         <div className="transit-swatches" role="group" aria-label="预设配色">
           {colors.map(preset => (
@@ -91,6 +91,6 @@ export function TransitPalette() {
           <button className="transit-palette-reset" type="button" onClick={() => setAppearance(defaults)}>恢复默认</button>
         </div>
       </div>
-    </details>
+    </section>
   );
 }

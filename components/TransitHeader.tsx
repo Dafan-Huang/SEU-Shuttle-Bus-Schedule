@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { BusIcon } from './Icons';
-import { TransitPalette } from './TransitPalette';
 
 export function TransitHeader({ children }: { children?: ReactNode }) {
   return (
@@ -12,7 +11,6 @@ export function TransitHeader({ children }: { children?: ReactNode }) {
         </div>
         <h1>接驳车时刻查询</h1>
         <p>查看下一班车与完整时刻表</p>
-        <TransitPalette />
       </div>
       <div className="transit-line" aria-hidden="true">
         <span /><span /><span />

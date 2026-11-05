@@ -215,24 +215,14 @@ html[data-transit-mode="light"] .transit-shell {
   background: var(--transit-inset);
 }
 
-.transit-palette summary {
+.transit-palette-title {
   display: flex;
   align-items: center;
   gap: 0.55rem;
   padding: 0.55rem 0.8rem;
-  border-radius: inherit;
-  cursor: pointer;
   font-size: 0.85rem;
   font-weight: 650;
 }
-
-.transit-palette summary::after {
-  content: '+';
-  margin-inline-start: auto;
-  color: var(--transit-mint);
-}
-
-.transit-palette[open] summary::after { content: '−'; }
 
 .transit-palette-dot {
   width: 0.8rem;

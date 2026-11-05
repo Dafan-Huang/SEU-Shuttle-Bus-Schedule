@@ -35,21 +35,21 @@ const detectPlatform = (): 'mobile' | 'desktop' => {
   return platform;
 };
 
-// 动态导入对应的 App 组件
-const loadApp = async () => {
-  const platform = detectPlatform();
-  
-  let AppComponent;
-  if (platform === 'mobile') {
-    const module = await import('./App.mobile');
-    AppComponent = module.default;
-  } else {
-    const module = await import('./App.desktop');
-    AppComponent = module.default;
-  }
-  
-  return AppComponent;
+const appLoaders = {
+  mobile: () => import('./App.mobile'),
+  desktop: () => import('./App.desktop')
 };
+
+async function loadApp() {
+  const platform = detectPlatform();
+  try {
+    return (await appLoaders[platform]()).default;
+  } catch (error) {
+    console.warn('Failed to load preferred layout:', error);
+    const fallback = platform === 'mobile' ? 'desktop' : 'mobile';
+    return (await appLoaders[fallback]()).default;
+  }
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -67,13 +67,5 @@ loadApp().then((AppComponent) => {
   );
 }).catch((error) => {
   console.error('Failed to load app component:', error);
-  // 降级到默认的 App 组件
-  import('./App').then((module) => {
-    const DefaultApp = module.default;
-    root.render(
-      <React.StrictMode>
-        <DefaultApp />
-      </React.StrictMode>
-    );
-  });
+  root.render(<p role="alert" className="p-6 text-center">页面加载失败，请刷新后重试。</p>);
 });
