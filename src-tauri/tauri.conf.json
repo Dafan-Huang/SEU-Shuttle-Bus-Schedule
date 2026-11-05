@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "接驳车实时查询",
-  "version": "1.0.0",
+  "version": "2.1.2",
   "identifier": "com.shuttlebus.query",
   "build": {
     "frontendDist": "../dist",
