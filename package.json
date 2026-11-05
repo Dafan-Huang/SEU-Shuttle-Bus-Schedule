@@ -7,8 +7,7 @@
   "main": "electron/main.cjs",
   "homepage": "./",
   "author": {
-    "name": "發财",
-    "email": "your-email@example.com"
+    "name": "發财"
   },
   "license": "MIT",
   "keywords": [
@@ -24,10 +23,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/shuttle-bus-schedule.git"
+    "url": "https://github.com/Dafan-Huang/SEU-Shuttle-Bus-Schedule.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/shuttle-bus-schedule/issues"
+    "url": "https://github.com/Dafan-Huang/SEU-Shuttle-Bus-Schedule/issues"
   },
   "scripts": {
     "dev": "vite",

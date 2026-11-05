@@ -1,7 +1,7 @@
 import React from 'react';
 import { PwaControls } from './PwaControls';
 
-const REPOSITORY_URL = 'https://github.com/xzh-xzh/shuttle-bus-schedule';
+const REPOSITORY_URL = 'https://github.com/Dafan-Huang/SEU-Shuttle-Bus-Schedule';
 
 export const AppCredit: React.FC = () => (
   <>
@@ -15,7 +15,7 @@ export const AppCredit: React.FC = () => (
         rel="noreferrer"
         className="underline underline-offset-2"
       >
-        原作：缘天天
+        GitHub
       </a>
     </p>
   </>
